@@ -580,7 +580,7 @@ int main()
 		printf(" Lab03--------------------------------\n");
 		printf("\t 3 - Hough\n");
 
-		printf(" Lab03--------------------------------\n");
+		printf(" Lab04--------------------------------\n");
 		printf("\t 4 - DT\n");
 
 		printf("\n0 - Exit\n\n");
