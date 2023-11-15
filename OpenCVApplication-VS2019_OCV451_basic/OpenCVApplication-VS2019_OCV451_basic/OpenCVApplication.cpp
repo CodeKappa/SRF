@@ -6,6 +6,7 @@
 #include <cmath>
 #include <vector>
 #include <random>
+#include <float.h>
 
 using namespace std;
 
@@ -562,31 +563,420 @@ void dt()
 	}
 }
 
+// Lab 5 - Statistical Data Analysis
+void vectorToCsv(vector<double> v)
+{
+	ofstream fout("vector.csv");
+	for (double value : v)
+	{
+		fout << value << ',';
+	}
+	fout.close();
+}
+
+void matrixToCsv(vector<vector<double>> m, string name)
+{
+	ofstream fout(name);
+	for (vector<double> row : m)
+	{
+		for (double value : row)
+		{
+			fout << value << ',';
+		}
+		fout << '\n';
+	}
+	fout.close();
+}
+
+void statistical_analysis()
+{
+	char folderName[MAX_PATH];
+	//while (openFolderDlg(folderName))
+	if(1 == 1)
+	{
+		strcpy(folderName, "./Data/prs_res_Statistics");
+		Mat featureMatrix = Mat(400, 19 * 19, CV_8UC1);
+
+		uchar* fmData = featureMatrix.data;
+		int width = 19 * 19;
+
+		// feature matrix
+		char fname[256];
+		for (int k = 0; k < 400; k++) 
+		{
+			sprintf(fname, "%s/face%05d.bmp", folderName, k + 1);
+			Mat img = imread(fname, IMREAD_GRAYSCALE);
+
+			uchar* imgData = img.data;
+			for (int i = 0; i < 19; i++)
+			{
+				for (int j = 0; j < 19; j++)
+				{
+					fmData[(k * width) + i * 19 + j] = imgData[(i * 19 + j)];
+				}
+			}
+		}
+
+		// vector mean
+		vector<double> mean_vector;
+		for (int col = 0; col < 19 * 19; col++)
+		{
+			double mean = 0;
+			for (int row = 0; row < 400; row++)
+			{
+				mean += fmData[row * 361 + col];
+			}
+			mean /= 400.0;
+			mean_vector.push_back(mean);
+		}
+
+		vectorToCsv(mean_vector);
+
+		// cov matrix
+		vector<vector<double>> cov_matrix(361, vector<double>(361, 0));
+		vector<double> aux;
+
+		for (int col1 = 0; col1 < 361; col1++)
+		{
+			double mean = 0;
+			for (int col2 = 0; col2 < 361; col2++)
+			{
+				for (int row = 0; row < 400; row++)
+				{
+					mean += (fmData[row * 361 + col1] - mean_vector[col1])
+						* (fmData[row * 361 + col2] - mean_vector[col2]);
+				}
+				mean /= 400.0;
+				cov_matrix[col1][col2] = mean;
+			}
+		}
+
+		matrixToCsv(cov_matrix, "cov.csv");
+
+		// deviation
+		vector<double> deviation;
+		for (int col = 0; col < 19 * 19; col++)
+		{
+			double dev = 0;
+			for (int row = 0; row < 400; row++)
+			{
+				double value = fmData[row * 361 + col] - mean_vector[col];
+				dev += value * value;
+			}
+			dev /= 400;
+			dev = sqrt(dev);
+			deviation.push_back(dev);
+		}
+
+		// corelation
+		vector<vector<double>> cor_matrix(361, vector<double>(361));
+		for (int row = 0; row < 361; row++)
+		{
+			for (int col = 0; col < 361; col++)
+			{
+				double value = cov_matrix[row][col];
+				value = value / (deviation[row] * deviation[col]);
+				cor_matrix[row][col] = value;
+			}
+		}
+
+		matrixToCsv(cor_matrix, "cor.csv");
+
+		// render
+		int a1, b1, a2, b2;
+		//cin >> a1 >> b1 >> a2 >> b2;
+		a1 = 5;
+		b1 = 4;
+		a2 = 5;
+		b2 = 14;
+
+		//Mat see = Mat(256, 256, CV_8UC1);
+		Mat see(256, 256, CV_8UC1, Scalar(255, 255, 255));
+		uchar* seeData = see.data;
+		
+		int p1 = a1 * 19 + b1;
+		int p2 = a2 * 19 + b2;
+
+		for (int k = 0; k < 400; k++)
+		{
+			int a = fmData[k * 361 + p1];
+			int b = fmData[k * 361 + p2];
+
+			seeData[a * 256 + b] = 0;
+		}
+
+		cout << "coef: " << cor_matrix[p1][p2] << '/n';
+
+		imshow("Feature matrix", featureMatrix);
+		imshow("Image", see);
+
+		waitKey();
+		destroyAllWindows();
+	}
+}
+
+// Lab 6 - Principal component analysis
+Mat pca_coef(Mat X, Mat Q, int n, int d, int k)
+{
+	Mat Qk = Q(Range(0, d), Range(0, k));
+	Mat Xcoeff = X * Qk;
+	//Mat Xk = X * Qk * (Qk.t());
+	return Xcoeff;
+}
+
+void pca()
+{
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		// read data
+		ifstream fin(fname);
+
+		int n, d;
+		double x;
+
+		fin >> n >> d;
+
+		Mat X(n, d, CV_64FC1);
+		double* xData = (double*)X.data;
+
+		for (int i = 0; i < n; i++)
+		{
+			vector<double> aux;
+			for (int j = 0; j < d; j++)
+			{
+				int pixel = i * d + j;
+				
+				fin >> x;
+				xData[pixel] = x;
+			}
+		}
+		fin.close();
+
+		// data normalization
+		vector<double> mean_vector;
+		double sum;
+		for (int col = 0; col < d; col++)
+		{
+			sum = 0;
+			for (int row = 0; row < n; row++)
+			{
+				int pixel = row * d + col;
+				sum += xData[pixel];
+			}
+			mean_vector.push_back(sum / n);
+		}
+
+		cout << "mean_vector: ";
+		for (auto v : mean_vector)
+		{
+			cout << v << ' ';
+		}
+		cout << '\n';
+
+		for (int col = 0; col < d; col++)
+		{
+			sum = 0;
+			for (int row = 0; row < n; row++)
+			{
+				int pixel = row * d + col;
+				xData[pixel] -= mean_vector[col]; 
+			}
+		}
+
+		// covariance matrix
+		Mat cov = X.t() * X / (n - 1);
+
+		// eigen decomposition
+		Mat lmbda, Q;
+		eigen(cov, lmbda, Q);
+		Q = Q.t();
+
+		// print eigen
+		cout << "Eigen values:";
+		for (int i = 0; i < d; i++)
+		{
+			cout << lmbda.at<double>(i, 0) << ' ';
+		}
+		cout << '\n';
+
+		// pca coefficients
+		int k = 1;
+		Mat Qk = Q(Range(0, d), Range(0, k));
+		Mat Xcoeff = X * Qk;
+		Mat Xk = X * Qk * (Qk.t());
+		double* xkData = (double*)Xk.data;
+
+		// mean absolute difference
+
+		double mad = 0;
+
+		for (int i = 0; i < n; i++)
+		{
+			for (int j = 0; j < d; j++)
+			{
+				int pixel = i * d + j;
+
+				mad += abs(xData[pixel] - xkData[pixel]);
+			}
+		}
+
+		mad /= ((double)n) * d;
+
+		cout << "Mean absolute difference: " << mad << '\n';
+		vector<double> mins;
+		vector<double> maxs;
+
+		double m, M;
+
+		// max and min coeff
+		Xcoeff = pca_coef(X, Q, n, d, d);
+		double* xcData = (double*)Xcoeff.data;
+
+		for (int col = 0; col < d; col++)
+		{
+			m = DBL_MAX;
+			M = DBL_MIN;
+			for (int row = 0; row < n; row++)
+			{
+				int pixel = row * d + col;
+
+				if (xcData[pixel] > M)
+				{
+					M = xcData[pixel];
+				}
+				if (xcData[pixel] < m)
+				{
+					m = xcData[pixel];
+				}
+			}
+			mins.push_back(m);
+			maxs.push_back(M);
+		}
+
+
+
+		cin >> k;
+		M = maxs[0] - mins[0] > maxs[1] - mins[1] ? maxs[0] - mins[0] : maxs[1] - mins[1];
+		Mat Xc = Xcoeff(Range(0, n), Range(0, k));
+		double* data = (double*) Xc.data;
+		if (k == 2)
+		{
+			for (int col = 0; col < k; col++)
+			{
+				for (int row = 0; row < n; row++)
+				{
+					int pixel = row * d + col;
+
+					data[pixel] -= mins[col];
+				}
+			}
+
+			Mat img(M + 1, M + 1, CV_8UC1);
+			for (int row = 0; row < n; row++)
+			{
+				int pixel = row * d;
+
+				img.at<uchar>(data[pixel], data[pixel + 1]) = 0;
+
+			}
+
+			imshow("2", img);
+		}
+		else if (k == 3)
+		{
+			for (int col = 0; col < 2; col++)
+			{
+				for (int row = 0; row < n; row++)
+				{
+					int pixel = row * d + col;
+
+					data[pixel] -= mins[col];
+				}
+			}
+
+			for (int row = 0; row < n; row++)
+			{
+				int pixel = row * d + 2;
+
+				data[pixel] -= mins[2];
+				data[pixel] /= (maxs[2] - mins[2]);
+				data[pixel] *= 255;
+				data[pixel] = data[pixel] > 255 ? 255 : data[pixel];
+			}
+
+			Mat img(M + 1, M + 1, CV_8UC1);
+			for (int row = 0; row < n; row++)
+			{
+				int pixel = row * d;
+
+				img.at<uchar>(data[pixel], data[pixel + 1]) = data[pixel+2];
+
+			}
+			imshow("3", img);
+		}
+
+		// find kth
+
+		double b = 0;
+		for (int row = 0; row < d; row++)
+		{
+			b += lmbda.at<double>(row, 0);
+		}
+
+		for (k = 1; k <= d; k++)
+		{
+			double a = 0;
+			for (int row = 0; row < k; row++)
+			{
+				a += lmbda.at<double>(row, 0);
+			}
+
+
+
+			if ((a/b) > 0.99)
+			{
+				cout << "min k: " << k;
+				break;
+			}
+		}
+
+		waitKey();
+		destroyAllWindows();
+	}
+}
+
 int main()
 {
-	int op = 3;
+	int op = 6;
 	do
 	{
 		system("cls");
 		destroyAllWindows();
-		printf("Menu:\n");
+		cout << "Menu:\n";
 
-		printf(" Lab01--------------------------------\n");
-		printf("\t 1 - Regression\n");
+		cout << " Lab01--------------------------------\n";
+		cout << "\t 1 - Regression\n";
 
-		printf(" Lab02--------------------------------\n");
-		printf("\t 2 - RANSAC\n");
+		cout << " Lab02--------------------------------\n";
+		cout << "\t 2 - RANSAC\n";
 
-		printf(" Lab03--------------------------------\n");
-		printf("\t 3 - Hough\n");
+		cout << " Lab03--------------------------------\n";
+		cout << "\t 3 - Hough\n";
 
-		printf(" Lab04--------------------------------\n");
-		printf("\t 4 - DT\n");
+		cout << " Lab04--------------------------------\n";
+		cout << "\t 4 - Distance transform\n";
 
-		printf("\n0 - Exit\n\n");
+		cout << " Lab05--------------------------------\n";
+		cout << "\t 5 - Statistical Data Analysis\n";
 
-		printf("Option: ");
-		cin >> op;
+		cout << " Lab06--------------------------------\n";
+		cout << "\t 6 - Principal Component Analysis\n";
+
+		cout << "\n0 - Exit\n\n";
+
+		cout << "Option: ";
+		//cin >> op;
 		switch (op)
 		{
 			case 1:
@@ -597,7 +987,12 @@ int main()
 				hough();
 			case 4:
 				dt();
+			case 5:
+				statistical_analysis();
+			case 6:
+				pca();
 		}
+		op = 0;
 	}
 	while (op!=0);
 	return 0;
