@@ -946,9 +946,361 @@ void pca()
 	}
 }
 
+// Lab 7 - K-means clustering
+vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<double>> &centers, int max_iterations = 20)
+{
+	vector<int> clusters(points.size());
+
+	random_device rd;
+	default_random_engine gen(rd());
+	uniform_int_distribution<int> distribution(0, points.size());
+
+	// initialize centers
+	set<int> unique_centers;
+	while(unique_centers.size() != k)
+	{
+		int number = distribution(gen);
+		unique_centers.insert(number);
+	}
+
+	for (int it : unique_centers)
+	{
+		vector<double>center(points[it].begin(), points[it].end());
+		centers.push_back(center);
+	}
+
+	int iteration = 0;
+	do 
+	{
+		// assign points to clusters
+		for (int i = 0; i < points.size(); i++)
+		{
+			double min_dist = DBL_MAX;
+
+			for (int j = 0; j < centers.size(); j++)
+			{
+				int dist = 0;
+				for (int l = 0; l < d; l++)
+				{
+					dist += (centers[j][l] - points[i][l]) * (centers[j][l] - points[i][l]);
+				}
+				dist = sqrt(dist);
+				if (dist < min_dist)
+				{
+					min_dist = dist;
+					clusters[i] = j;
+				}
+			}
+		}
+
+		// update centers
+		vector<vector<double>> new_centers(centers.size(), vector<double>(d));
+		vector<int> points_per_center(centers.size());
+		for (int i = 0; i < points.size(); i++)
+		{
+			points_per_center[clusters[i]]++;
+			for (int l = 0; l < d; l++)
+			{
+				new_centers[clusters[i]][l] += points[i][l];
+			}
+		}
+		for (int i = 0; i < centers.size(); i++)
+		{
+			for (int l = 0; l < d; l++)
+			{
+				new_centers[i][l] /= points_per_center[i];
+			}
+		}
+		
+		// if there is no change -> break
+		bool change = false;
+		for (int i = 0; i < centers.size() && change == false; i++)
+		{
+			for (int l = 0; l < d; l++)
+			{
+				if (new_centers[i][l] != centers[i][l])
+				{
+					change = true;
+					break;
+				}
+			}
+		}
+
+		if (change == false)
+			break;
+
+		centers = new_centers;
+
+		iteration++;
+		cout << iteration << '\n';
+	} while (iteration < max_iterations);
+
+	return clusters;
+}
+
+Mat voronoi(Mat source, vector<vector<double>> centers, vector<Vec3b> colors, int d)
+{
+	int rows = source.rows;
+	int cols = source.cols;
+	Mat Voronoi(rows, cols, CV_8UC3);
+
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			double min_dist = DBL_MAX;
+			int center = 0;
+
+			for (int l = 0; l < centers.size(); l++)
+			{
+				int dist = 0;
+				dist += (centers[l][0] - i) * (centers[l][0] - i);
+				dist += (centers[l][1] - j) * (centers[l][1] - j);
+				dist = sqrt(dist);
+				if (dist < min_dist)
+				{
+					min_dist = dist;
+					center = l;
+				}
+			}
+
+			Voronoi.at<Vec3b>(i, j) = colors[center];
+		}
+	}
+
+	return Voronoi;
+}
+
+void points_kmeans(Mat source, vector<Vec3b> colors)
+{
+	int d = 2, k;
+	cout << "k= ";
+	cin >> k;
+	//k = 3;
+
+	int rows = source.rows;
+	int cols = source.cols;
+	uchar* data = source.data;
+
+	vector<vector<int>> points;
+
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			int pixel = (i * cols + j) * 3;
+
+			if (data[pixel] == 0 && data[pixel + 1] == 0 && data[pixel + 2] == 0)
+			{
+				vector<int> dimensions;
+				dimensions.push_back(i);
+				dimensions.push_back(j);
+				points.push_back(dimensions);
+			}
+		}
+	}
+
+	vector<vector<double>> centers;
+	vector<int> clusters = kmeans(points, d, k, centers);
+
+	Mat img(rows, cols, CV_8UC3, Scalar(255, 255, 255));
+
+	for (int i = 0; i < points.size(); i++)
+	{
+		img.at<Vec3b>(points[i][0], points[i][1]) = colors[clusters[i]];
+	}
+
+	for (int i = 0; i < centers.size(); i++)
+	{
+		Point p = Point(centers[i][1], centers[i][0]);
+		circle(img, p, 1, colors[i], 5, 5, 0);
+	}
+
+	Mat Voronoi = voronoi(source, centers, colors, d);
+
+
+	imshow("kmeans", img);
+	imshow("voronoi", Voronoi);
+
+	waitKey();
+}
+
+void gray_kmeans(Mat source)
+{
+	int d = 1, k;
+	cout << "k= ";
+	cin >> k;
+	//k = 10;
+
+	Mat greyMat;
+	cvtColor(source, greyMat, cv::COLOR_RGB2GRAY);
+
+	int rows = greyMat.rows;
+	int cols = greyMat.cols;
+	uchar* data = greyMat.data;
+
+	vector<vector<int>> points;
+
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			int pixel = i * cols + j;
+			vector<int> dimensions;
+			dimensions.push_back(data[pixel]);
+			points.push_back(dimensions);
+		}
+	}
+
+	vector<vector<double>> centers;
+	vector<int> clusters = kmeans(points, d, k, centers);
+
+
+	vector<double> intensities(k);
+	vector<int> count(k);
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			int pixel = i * cols + j;
+			intensities[clusters[pixel]] += data[pixel];
+			count[clusters[pixel]]++;
+		}
+	}
+
+	for (int i = 0; i < k; i++)
+	{
+		intensities[i] /= count[i];
+	}
+
+	Mat img(rows, cols, CV_8UC1);
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			img.at<uchar>(i, j) = intensities[clusters[i * cols + j]];
+		}
+	}
+
+	imshow("gray", img);
+}
+
+void color_kmeans(Mat source)
+{
+	int d = 3, k;
+	cout << "k= ";
+	cin >> k;
+	//k = 3;
+
+	int rows = source.rows;
+	int cols = source.cols;
+	uchar* data = source.data;
+
+	vector<vector<int>> points;
+
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			int pixel = (i * cols + j) * 3;
+			vector<int> dimensions;
+			dimensions.push_back(data[pixel]);
+			dimensions.push_back(data[pixel + 1]);
+			dimensions.push_back(data[pixel + 2]);
+			points.push_back(dimensions);
+		}
+	}
+
+	vector<vector<double>> centers;
+	vector<int> clusters = kmeans(points, d, k, centers);
+
+	vector<vector<double>> intensities(k, vector<double>(3));
+	vector<int> count(k);
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			int pixel = i * cols + j;
+			intensities[clusters[pixel]][0] += source.at<Vec3b>(i, j)[0];
+			intensities[clusters[pixel]][1] += source.at<Vec3b>(i, j)[1];
+			intensities[clusters[pixel]][2] += source.at<Vec3b>(i, j)[2];
+			count[clusters[pixel]]++;
+		}
+	}
+
+	for (int i = 0; i < k; i++)
+	{
+		intensities[i][0] /= count[i];
+		intensities[i][1] /= count[i];
+		intensities[i][2] /= count[i];
+	}
+
+	Mat img(rows, cols, CV_8UC3);
+	for (int i = 0; i < rows; i++)
+	{
+		for (int j = 0; j < cols; j++)
+		{
+			int pixel = i * cols + j;
+			img.at<Vec3b>(i, j)[0] = intensities[clusters[pixel]][0];
+			img.at<Vec3b>(i, j)[1] = intensities[clusters[pixel]][1];
+			img.at<Vec3b>(i, j)[2] = intensities[clusters[pixel]][2];
+		}
+	}
+
+	imshow("Color", img);
+}
+
+vector<Vec3b> random_colors(int k = 10)
+{
+	default_random_engine gen;
+	uniform_int_distribution<int> distribution(0, 200);
+	int rand_val = distribution(gen);
+
+	vector<Vec3b> colors;
+	for (int i = 0; i < k; i++)
+		colors.push_back({ (uchar)distribution(gen),
+		(uchar)distribution(gen),
+		(uchar)distribution(gen) });
+
+	return colors;
+}
+
+void clustering()
+{
+	vector<Vec3b> colors = random_colors();
+
+	char fname[MAX_PATH];
+	while (openFileDlg(fname))
+	{
+		int c;
+		cout << "case = ";
+		//cin >> c;
+		c = 3;
+
+		Mat source = imread(fname, IMREAD_COLOR);
+
+		if (c == 1)
+		{
+			points_kmeans(source, colors);
+		}
+		else if (c == 2)
+		{
+			gray_kmeans(source);
+		}
+		else if (c == 3)
+		{
+			color_kmeans(source);
+		}
+
+		waitKey();
+		destroyAllWindows();
+	}
+
+}
+
 int main()
 {
-	int op = 6;
+	int op = 7;
 	do
 	{
 		system("cls");
@@ -973,6 +1325,9 @@ int main()
 		cout << " Lab06--------------------------------\n";
 		cout << "\t 6 - Principal Component Analysis\n";
 
+		cout << " Lab07--------------------------------\n";
+		cout << "\t 7 - K-means Clustering\n";
+
 		cout << "\n0 - Exit\n\n";
 
 		cout << "Option: ";
@@ -991,6 +1346,8 @@ int main()
 				statistical_analysis();
 			case 6:
 				pca();
+			case 7:
+				clustering();
 		}
 		op = 0;
 	}
