@@ -21,6 +21,37 @@ bool isInside(Mat img, int row, int col)
 	return true;
 }
 
+/* Histogram display function - display a histogram using bars
+Input:
+name - destination (output) window name
+hist - pointer to the vector containing the histogram values
+hist_cols - no. of bins (elements) in the histogram = histogram image width
+hist_height - height of the histogram image
+Call example:
+showHistogram ("MyHist", hist_dir, 255, 200);
+*/
+void showHistogram(const string& name, vector<int> hist, const int  hist_cols, const int hist_height)
+{
+	Mat imgHist(hist_height, hist_cols, CV_8UC3, CV_RGB(255, 255, 255)); // constructs a white image
+
+	//computes histogram maximum
+	int max_hist = 0;
+	for (int i = 0; i < hist_cols; i++)
+		if (hist[i] > max_hist)
+			max_hist = hist[i];
+	double scale = 1.0;
+	scale = (double)hist_height / max_hist;
+	int baseline = hist_height - 1;
+
+	for (int x = 0; x < hist_cols; x++) {
+		Point p1 = Point(x, baseline);
+		Point p2 = Point(x, baseline - cvRound(hist[x] * scale));
+		line(imgHist, p1, p2, CV_RGB(255, 0, 255)); // histogram bins colored in magenta
+	}
+
+	imshow(name, imgHist);
+}
+
 // Lab1 - Regression
 Mat closed_form(char* fname)
 {
@@ -407,7 +438,7 @@ void hough()
 	}
 }
 
-// Lab 4 - DT
+// Lab 4 - Distance Transform
 pair<int, int> center_of_mass(Mat img)
 {
 	pair<int, int> com{ 0, 0 }; // center of mass - {mx, my}
@@ -715,7 +746,7 @@ void statistical_analysis()
 	}
 }
 
-// Lab 6 - Principal component analysis
+// Lab 6 - Principal Component Analysis
 Mat pca_coef(Mat X, Mat Q, int n, int d, int k)
 {
 	Mat Qk = Q(Range(0, d), Range(0, k));
@@ -946,7 +977,7 @@ void pca()
 	}
 }
 
-// Lab 7 - K-means clustering
+// Lab 7 - K-means Clustering
 vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<double>> &centers, int max_iterations = 20)
 {
 	vector<int> clusters(points.size());
@@ -1153,7 +1184,7 @@ void gray_kmeans(Mat source)
 	}
 
 	vector<vector<double>> centers;
-	vector<int> clusters = kmeans(points, d, k, centers);
+	vector<int> clusters = kmeans(points, d, k, centers, 10);
 
 
 	vector<double> intensities(k);
@@ -1274,8 +1305,8 @@ void clustering()
 	{
 		int c;
 		cout << "case = ";
-		//cin >> c;
-		c = 3;
+		cin >> c;
+		//c = 3;
 
 		Mat source = imread(fname, IMREAD_COLOR);
 
@@ -1298,9 +1329,183 @@ void clustering()
 
 }
 
+// Lab 8 - K-nearest Neighbors
+vector<int> calcHist(Mat img, int nr_bins)
+{
+	vector<int> hist(nr_bins * 3);
+
+	uchar* imgData = img.data;
+
+	int d = 256 / nr_bins;
+	for (int i = 0; i < img.rows; i++)
+	{
+		for (int j = 0; j < img.cols; j++)
+		{
+			int pixel = (i * img.cols + j) * 3;
+
+			int blue = imgData[pixel];
+			int green = imgData[pixel + 1];
+			int red = imgData[pixel + 2];
+
+			hist[blue / d]++;
+			hist[green / d + nr_bins]++;
+			hist[red / d + nr_bins * 2]++;
+		}
+	}
+
+	return hist;
+}
+
+double euclDist(vector<int> q, vector<int> p)
+{
+	double sum = 0;
+	for (int i = 0; i < q.size(); i++)
+	{
+		sum += (q[i] - p[i]) * (q[i] - p[i]);
+	}
+
+	sum = sqrt(sum);
+
+	return sum;
+}
+
+void kkn_classifier(vector<pair<vector<int>, int>> test, vector<pair<vector<int>, int>> train, int k, int nr_classes)
+{
+	vector<vector<double>> C(nr_classes, vector<double>(nr_classes));
+
+
+	for (pair<vector<int>, int> te : test)
+	{
+		vector<pair<double, int>> distances;
+		for (pair<vector<int>, int> tr : train)
+		{
+			double distance = euclDist(te.first, tr.first);
+			distances.push_back({ distance, tr.second });
+		}
+
+		sort(distances.begin(), distances.end(), [](auto& left, auto& right) {
+			return left.first < right.first;
+			});
+
+		vector<int>predictions(6, 0);
+
+		for (int i = 0; i < k; i++)
+		{
+			predictions[distances[i].second]++;
+			//C[distances[i].second][te.second]++;
+		}
+
+		int prediction = predictions[0];
+		int predicted_class = 0;
+		for (int i = 0; i < nr_classes; i++)
+		{
+			if (predictions[i] > prediction)
+			{
+				prediction = predictions[i];
+				predicted_class = i;
+			}
+		}
+
+		C[predicted_class][te.second]++;
+
+	}
+
+	double acc = 0, diagonal = 0, sum = 0;
+
+	for (int i = 0; i < nr_classes; i++)
+	{
+		diagonal += C[i][i];
+	}
+
+	for (int i = 0; i < nr_classes; i++)
+	{
+		for (int j = 0; j < nr_classes; j++)
+		{
+			sum += C[i][j];
+		}
+	}
+
+	acc = diagonal / sum;
+
+	cout << "Accuracy = " << acc << "\n";
+}
+
+void neighbors()
+{
+	const int nrclasses = 6;
+	char classes[nrclasses][10] =
+	{ "beach", "city", "desert", "forest", "landscape", "snow" };
+
+	char train_fldname[MAX_PATH], test_fldname[MAX_PATH];
+	char fname[1000];
+	strcpy(train_fldname, "D:/GitHub/SRF/OpenCVApplication-VS2019_OCV451_basic/OpenCVApplication-VS2019_OCV451_basic/Data/prs_res_KNN/train");
+	strcpy(test_fldname, "D:/GitHub/SRF/OpenCVApplication-VS2019_OCV451_basic/OpenCVApplication-VS2019_OCV451_basic/Data/prs_res_KNN/test");
+	//while (openFolderDlg(train_fldname))
+
+	int nr_bins;
+	cout << "\nBins: ";
+	//cin >> nr_bins;
+	nr_bins = 8;
+
+	// train features 
+	vector<pair<vector<int>, int>> train(0);
+
+	int c = 0, fileNr = 0;
+	while (true)
+	{
+		sprintf(fname, "%s/%s/%06d.jpeg", train_fldname, classes[c], fileNr++);
+		Mat img = imread(fname);
+		if (img.empty())
+		{
+			if (c > nrclasses)
+				break;
+			c++;
+			fileNr = 0;
+			continue;
+		}
+			
+		vector<int> hist = calcHist(img, nr_bins);
+		
+		//showHistogram("hist", hist, 3 * nr_bins, 100);
+		//waitKey();
+		//destroyAllWindows();
+
+		train.push_back({ hist, c});
+	}
+
+	// test features
+	vector<pair<vector<int>, int>> test(0);
+
+	c = 0, fileNr = 0;
+	while (true)
+	{
+		sprintf(fname, "%s/%s/%06d.jpeg", test_fldname, classes[c], fileNr++);
+		Mat img = imread(fname);
+		if (img.empty())
+		{
+			if (c >= nrclasses)
+				break;
+			c++;
+			fileNr = 0;
+			continue;
+		}
+
+		vector<int> hist = calcHist(img, nr_bins);
+
+		test.push_back({ hist, c });
+	}
+
+	// classify
+	for (int i = 1; i < 3 * nr_bins; i++)
+	{
+		cout << i << ": ";
+		kkn_classifier(test, train, i, nrclasses);
+	}
+}
+
 int main()
 {
-	int op = 7;
+	int op = 8;
 	do
 	{
 		system("cls");
@@ -1328,10 +1533,13 @@ int main()
 		cout << " Lab07--------------------------------\n";
 		cout << "\t 7 - K-means Clustering\n";
 
+		cout << " Lab08--------------------------------\n";
+		cout << "\t 8 - K-nearest Neighbors\n";
+
 		cout << "\n0 - Exit\n\n";
 
 		cout << "Option: ";
-		//cin >> op;
+		cin >> op;
 		switch (op)
 		{
 			case 1:
@@ -1348,6 +1556,8 @@ int main()
 				pca();
 			case 7:
 				clustering();
+			case 8:
+				neighbors();
 		}
 		op = 0;
 	}
