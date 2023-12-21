@@ -1503,6 +1503,151 @@ void neighbors()
 	}
 }
 
+// Lab 9 - Naive Bayesian Classifier
+vector<Mat> load_mnist(string path, int classes = 8)
+{
+	int num_samples = 200;
+	int img_size = 28;
+
+	vector<Mat> features;
+
+	for (int c = 0; c < classes; c++)
+	{
+		Mat feature(num_samples, img_size * img_size, CV_8UC1);
+		for (int s = 0; s < num_samples; s++)
+		{
+			char img_path[500];
+			sprintf(img_path, "%s/%d/%06d.png", path.c_str(), c, s);
+			Mat img = imread(img_path, IMREAD_GRAYSCALE);
+			if(img.cols == 0) break;
+
+			for (int i = 0; i < img_size; i++)
+			{
+				for (int j = 0; j < img_size; j++)
+				{
+					int pixel = i * img_size + j;
+
+					int feature_row = s * img_size * img_size;
+					feature.data[feature_row + pixel] = img.data[pixel];
+				}
+			}
+		}
+		features.push_back(feature);
+	}
+
+	return features;
+}
+
+pair<Mat, vector<double>> naive_bayes_classifier(vector<Mat> features)
+{
+	// thresholding
+	for (Mat feature : features)
+	{
+		threshold(feature, feature, 128, 255, THRESH_BINARY);
+	}
+
+	// priors
+	int total_samples = 0;
+	for (Mat feature : features)
+		total_samples += feature.rows;
+	
+	vector<double> priors(features.size());
+	for (int i = 0; i < features.size(); i++)
+		priors[i] = ((double)features[i].rows) / total_samples;
+
+	cout << "Priors: ";
+	for (double value : priors)
+		cout << value << " ";
+	cout << '\n';
+
+	// likelihood
+	Mat likelihood(features.size(), features[0].cols, CV_64FC1, Scalar(1));
+
+	for (int f = 0; f < features.size(); f++)
+	{
+		Mat feature = features[f];
+		for (int col = 0; col < feature.cols; col++)
+		{
+			int hit = 0;
+			for (int row = 0; row < feature.rows; row++)
+			{
+				int position = row * feature.cols + col;
+				if (feature.data[position] == 255)
+					hit++;
+			}
+			likelihood.at<double>(f, col) = ((double)hit) / feature.rows;
+		}
+	}
+
+	return { likelihood, priors };
+}
+
+int classifyBayes(Mat img, vector<double> priors, Mat likelihood)
+{
+	threshold(img, img, 128, 255, THRESH_BINARY);
+	Mat img_flat(1, 28 * 28, CV_8UC1);
+	for (int i = 0; i < 28; i++)
+	{
+		for (int j = 0; j < 28; j++)
+		{
+			int pixel = i * 28 + j;
+
+			img_flat.data[pixel] = img.data[pixel];
+		}
+	}
+
+	Mat prob(likelihood.rows, 1, CV_64FC1);
+	for (int c = 0; c < likelihood.rows; c++)
+	{
+		prob.at<double>(c, 0) = log(priors[c]);
+		for(int col = 0; col < likelihood.cols; col++)
+		{
+			double lkh = likelihood.at<double>(c, col);
+			prob.at<double>(c, 0) += img_flat.at<uchar>(0, col) == 255 ? log(lkh) : log(1 - lkh);
+		}
+	}
+
+	int classP = 0;
+	double cprob = cprob = prob.at<double>(0, 0);;
+	for (int c = 0; c < prob.rows; c++)
+	{
+		if (prob.at<double>(c, 0) > cprob)
+		{
+			cprob = prob.at<double>(c, 0);
+			classP = c;
+		}
+	}
+
+	cout << classP << " with prob: " << cprob << '\n';
+
+	return classP;
+}
+
+void mnist()
+{
+	string train_path, test_path;
+	train_path = "D:/GitHub/SRF/OpenCVApplication-VS2019_OCV451_basic/OpenCVApplication-VS2019_OCV451_basic/Data/prs_res_Bayes/train";
+	//test_path = "D:/GitHub/SRF/OpenCVApplication-VS2019_OCV451_basic/OpenCVApplication-VS2019_OCV451_basic/Data/prs_res_Bayes/test";
+	//openFolderDlg(train_path)
+	//openFolderDlg(test_path)
+
+	vector<Mat>train_features = load_mnist(train_path);
+	//vector<Mat>test_features = load_mnist(test_path);
+
+	pair<Mat, vector<double>> classifier = naive_bayes_classifier(train_features);
+	
+	char fname[MAX_PATH];
+	openFileDlg(fname);
+
+	Mat test_img = imread(fname, IMREAD_GRAYSCALE);
+
+	classifyBayes(test_img, classifier.second, classifier.first);
+			
+}
+
+// Lab 10 - Perceptron
+
+
 int main()
 {
 	int op = 8;
@@ -1536,6 +1681,12 @@ int main()
 		cout << " Lab08--------------------------------\n";
 		cout << "\t 8 - K-nearest Neighbors\n";
 
+		cout << " Lab09--------------------------------\n";
+		cout << "\t 9 - Naive Bayesian Classifier\n";
+
+		cout << " Lab10--------------------------------\n";
+		cout << "\t 10 - Perceptron\n";
+
 		cout << "\n0 - Exit\n\n";
 
 		cout << "Option: ";
@@ -1558,6 +1709,8 @@ int main()
 				clustering();
 			case 8:
 				neighbors();
+			case 9:
+				mnist();
 		}
 		op = 0;
 	}
