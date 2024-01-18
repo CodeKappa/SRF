@@ -7,6 +7,7 @@
 #include <vector>
 #include <random>
 #include <float.h>
+#include <limits>
 
 using namespace std;
 
@@ -56,17 +57,17 @@ void showHistogram(const string& name, vector<int> hist, const int  hist_cols, c
 Mat closed_form(char* fname)
 {
 	int height = 500, width = 500;
-	Mat img = Mat(height, width, CV_8UC3, Scalar(255,255,255));
+	Mat img = Mat(height, width, CV_8UC3, Scalar(255, 255, 255));
 	uchar* imgData = img.data;
 
 	ifstream input(fname);
 
 	int n = 0;
-	double sumX = 0, sumY = 0, sumXY = 0, sumX2 =0;
+	double sumX = 0, sumY = 0, sumXY = 0, sumX2 = 0;
 
 	// process data
 	input >> n;
-	for(int i = 0; i < n; i++)
+	for (int i = 0; i < n; i++)
 	{
 		double x, y;
 
@@ -99,7 +100,7 @@ Mat closed_form(char* fname)
 	line(img, point0, pointW, Scalar(0, 0, 255));
 
 	input.close();
-	
+
 	return img;
 }
 
@@ -142,7 +143,7 @@ Mat polar_coordinates(char* fname)
 
 	double n1 = 1.0 / (double)n;
 	b = -0.5 * atan2(2 * sumXY - 2 * n1 * sumX * sumY,
-				sumY2X2 + n1 * sumX * sumX - n1 * sumY * sumY);
+		sumY2X2 + n1 * sumX * sumX - n1 * sumY * sumY);
 	p = n1 * (cos(b) * sumX + sin(b) * sumY);
 
 	double y0 = (p - cos(b) * 0) / sin(b);
@@ -234,7 +235,7 @@ void ransac()
 			do
 			{
 				point2 = distribution(gen);
-			}while (point2 == point1);
+			} while (point2 == point1);
 
 			// line equation aX + bY + c = 0
 			Point p1 = points[point1];
@@ -427,7 +428,7 @@ void hough()
 
 			line(img, point0, pointW, Scalar(0, 255, 0));
 		}
-		
+
 		// show images
 		imshow("src", imgSrc);
 		imshow("hough", houghImg);
@@ -576,7 +577,7 @@ void dt()
 		{
 			Mat ukn = imread(fname_unknown, IMREAD_GRAYSCALE);
 			pair<int, int> ukn_com = center_of_mass(ukn);
-			
+
 			pair<int, int> com_dif = { tmp_com.first - ukn_com.first, tmp_com.second - ukn_com.second };
 			pair<int, int> com_dif0 = { 0, 0 };
 
@@ -623,7 +624,7 @@ void statistical_analysis()
 {
 	char folderName[MAX_PATH];
 	//while (openFolderDlg(folderName))
-	if(1 == 1)
+	if (1 == 1)
 	{
 		strcpy(folderName, "./Data/prs_res_Statistics");
 		Mat featureMatrix = Mat(400, 19 * 19, CV_8UC1);
@@ -633,7 +634,7 @@ void statistical_analysis()
 
 		// feature matrix
 		char fname[256];
-		for (int k = 0; k < 400; k++) 
+		for (int k = 0; k < 400; k++)
 		{
 			sprintf(fname, "%s/face%05d.bmp", folderName, k + 1);
 			Mat img = imread(fname, IMREAD_GRAYSCALE);
@@ -724,7 +725,7 @@ void statistical_analysis()
 		//Mat see = Mat(256, 256, CV_8UC1);
 		Mat see(256, 256, CV_8UC1, Scalar(255, 255, 255));
 		uchar* seeData = see.data;
-		
+
 		int p1 = a1 * 19 + b1;
 		int p2 = a2 * 19 + b2;
 
@@ -777,7 +778,7 @@ void pca()
 			for (int j = 0; j < d; j++)
 			{
 				int pixel = i * d + j;
-				
+
 				fin >> x;
 				xData[pixel] = x;
 			}
@@ -811,7 +812,7 @@ void pca()
 			for (int row = 0; row < n; row++)
 			{
 				int pixel = row * d + col;
-				xData[pixel] -= mean_vector[col]; 
+				xData[pixel] -= mean_vector[col];
 			}
 		}
 
@@ -890,7 +891,7 @@ void pca()
 		cin >> k;
 		M = maxs[0] - mins[0] > maxs[1] - mins[1] ? maxs[0] - mins[0] : maxs[1] - mins[1];
 		Mat Xc = Xcoeff(Range(0, n), Range(0, k));
-		double* data = (double*) Xc.data;
+		double* data = (double*)Xc.data;
 		if (k == 2)
 		{
 			for (int col = 0; col < k; col++)
@@ -941,7 +942,7 @@ void pca()
 			{
 				int pixel = row * d;
 
-				img.at<uchar>(data[pixel], data[pixel + 1]) = data[pixel+2];
+				img.at<uchar>(data[pixel], data[pixel + 1]) = data[pixel + 2];
 
 			}
 			imshow("3", img);
@@ -965,7 +966,7 @@ void pca()
 
 
 
-			if ((a/b) > 0.99)
+			if ((a / b) > 0.99)
 			{
 				cout << "min k: " << k;
 				break;
@@ -978,7 +979,7 @@ void pca()
 }
 
 // Lab 7 - K-means Clustering
-vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<double>> &centers, int max_iterations = 20)
+vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<double>>& centers, int max_iterations = 20)
 {
 	vector<int> clusters(points.size());
 
@@ -988,7 +989,7 @@ vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<doubl
 
 	// initialize centers
 	set<int> unique_centers;
-	while(unique_centers.size() != k)
+	while (unique_centers.size() != k)
 	{
 		int number = distribution(gen);
 		unique_centers.insert(number);
@@ -1001,7 +1002,7 @@ vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<doubl
 	}
 
 	int iteration = 0;
-	do 
+	do
 	{
 		// assign points to clusters
 		for (int i = 0; i < points.size(); i++)
@@ -1042,7 +1043,7 @@ vector<int> kmeans(vector<vector<int>> points, int d, int k, vector<vector<doubl
 				new_centers[i][l] /= points_per_center[i];
 			}
 		}
-		
+
 		// if there is no change -> break
 		bool change = false;
 		for (int i = 0; i < centers.size() && change == false; i++)
@@ -1463,14 +1464,14 @@ void neighbors()
 			fileNr = 0;
 			continue;
 		}
-			
+
 		vector<int> hist = calcHist(img, nr_bins);
-		
+
 		//showHistogram("hist", hist, 3 * nr_bins, 100);
 		//waitKey();
 		//destroyAllWindows();
 
-		train.push_back({ hist, c});
+		train.push_back({ hist, c });
 	}
 
 	// test features
@@ -1519,7 +1520,7 @@ vector<Mat> load_mnist(string path, int classes = 8)
 			char img_path[500];
 			sprintf(img_path, "%s/%d/%06d.png", path.c_str(), c, s);
 			Mat img = imread(img_path, IMREAD_GRAYSCALE);
-			if(img.cols == 0) break;
+			if (img.cols == 0) break;
 
 			for (int i = 0; i < img_size; i++)
 			{
@@ -1550,7 +1551,7 @@ pair<Mat, vector<double>> naive_bayes_classifier(vector<Mat> features)
 	int total_samples = 0;
 	for (Mat feature : features)
 		total_samples += feature.rows;
-	
+
 	vector<double> priors(features.size());
 	for (int i = 0; i < features.size(); i++)
 		priors[i] = ((double)features[i].rows) / total_samples;
@@ -1600,7 +1601,7 @@ int classifyBayes(Mat img, vector<double> priors, Mat likelihood)
 	for (int c = 0; c < likelihood.rows; c++)
 	{
 		prob.at<double>(c, 0) = log(priors[c]);
-		for(int col = 0; col < likelihood.cols; col++)
+		for (int col = 0; col < likelihood.cols; col++)
 		{
 			double lkh = likelihood.at<double>(c, col);
 			prob.at<double>(c, 0) += img_flat.at<uchar>(0, col) == 255 ? log(lkh) : log(1 - lkh);
@@ -1635,22 +1636,365 @@ void mnist()
 	//vector<Mat>test_features = load_mnist(test_path);
 
 	pair<Mat, vector<double>> classifier = naive_bayes_classifier(train_features);
-	
+
 	char fname[MAX_PATH];
 	openFileDlg(fname);
 
 	Mat test_img = imread(fname, IMREAD_GRAYSCALE);
 
 	classifyBayes(test_img, classifier.second, classifier.first);
-			
+
 }
 
-// Lab 10 - Perceptron
+// Lab 10 - Linear Classifiers
+Mat draw_line(Mat src, double a, double b, double c)
+{
+	Mat img = src.clone();
+	// aX + bY + c = 0
+	Point2f point0(0, (-a * 0 - c) / b);
+	Point2f pointW(img.cols, (-a * img.cols - c) / b);
 
+	line(img, point0, pointW, Scalar(0, 255, 0));
+	return img;
+}
+
+void online_perceptron(vector<pair<Point, double>> X, vector<double>& w, double lr = 0.0001, double elimit = 0.00001, int max_iter = 10000)
+{
+	int n = X.size();
+	for (int iter = 0; iter < max_iter; iter++)
+	{
+		double errors = 0;
+		double z;
+
+		for (int i = 0; i < n; i++)
+		{
+			z = w[0] * 1 +
+				w[1] * X[i].first.x +
+				w[2] * X[i].first.y;
+			if (z * X[i].second < 0)
+			{
+				w[0] += lr * 1 * X[i].second;
+				w[1] += lr * X[i].first.x * X[i].second;
+				w[2] += lr * X[i].first.y * X[i].second;
+
+				errors++;
+			}
+		}
+
+		errors /= n;
+		if (errors < elimit)
+			break;
+	}
+}
+
+void batch_perceptron(vector<pair<Point, double>> X, vector<double>& w, Mat img, double lr = 0.0001, double elimit = 0.000001, int max_iter = 10000)
+{
+	int n = X.size();
+	for (int iter = 0; iter < max_iter; iter++)
+	{
+		double errors = 0;
+		double loss = 0;
+		double z;
+		vector<double> gradient{ 0, 0, 0 };
+
+		for (int i = 0; i < n; i++)
+		{
+			z = w[0] * 1 +
+				w[1] * X[i].first.x +
+				w[2] * X[i].first.y;
+			if (z * X[i].second < 0)
+			{
+				gradient[0] -= 1 * X[i].second;
+				gradient[1] -= X[i].first.x * X[i].second;
+				gradient[2] -= X[i].first.y * X[i].second;
+
+				loss -= z * X[i].second;
+				errors++;
+			}
+		}
+
+		errors /= n;
+		loss /= n;
+
+		gradient[0] /= n;
+		gradient[1] /= n;
+		gradient[2] /= n;
+
+		if (errors < elimit)
+			break;
+
+		w[0] -= lr * 10 * gradient[0];
+		w[1] -= lr * gradient[1];
+		w[2] -= lr * gradient[2];
+
+		cout << "Iter " << iter << " loss " << loss << '\n';
+		if (iter % 100 == 0)
+		{
+			Mat preview = draw_line(img, w[2], w[1], w[0]);
+			imshow("preview", preview);
+			waitKey();
+		}
+	}
+}
+
+void linear_classifier()
+{
+	char fname[MAX_PATH];
+	openFileDlg(fname);
+
+	Mat img = imread(fname);
+
+	vector<pair<Point, double>> data;
+
+	for (int i = 0; i < img.rows; i++)
+	{
+		for (int j = 0; j < img.cols; j++)
+		{
+			int pixel = (i * img.cols + j) * 3;
+			if (img.data[pixel + 0] == 255 && img.data[pixel + 1] == 0 && img.data[pixel + 2] == 0) // blue
+				data.push_back({ Point(i, j),  -1 });
+			if (img.data[pixel + 0] == 0 && img.data[pixel + 1] == 0 && img.data[pixel + 2] == 255) // red
+				data.push_back({ Point(i, j),  1 });
+		}
+	}
+
+	vector<double> w1{ 0.1, 0.1, 0.1 };
+	online_perceptron(data, w1);
+	Mat online = draw_line(img, w1[2], w1[1], w1[0]);
+
+
+	vector<double> w2{ 0.1, 0.1, 0.1 };
+	batch_perceptron(data, w2, img);
+	Mat batch = draw_line(img, w2[2], w2[1], w2[0]);
+
+	imshow("img", img);
+	imshow("online", online);
+	imshow("batch", batch);
+
+	waitKey();
+}
+
+//Lab 11
+template <typename T>
+using matrix = std::vector<std::vector<T>>;
+
+struct WeakLearner
+{
+	int feature_idx;
+	int threshold;
+	int class_label;
+	double error;
+
+	WeakLearner() : feature_idx(0), threshold(0), class_label(0), error(0) {}
+
+	WeakLearner(int feature_idx, int threshold, int class_label, double error)
+		: feature_idx(feature_idx), threshold(threshold), class_label(class_label), error(error) {}
+
+
+	int classify(const vector<int> feature) const
+	{
+		return feature[feature_idx] < threshold ? class_label : -class_label;
+	}
+
+	static WeakLearner findWeakLearner(
+		const matrix<int> features,
+		const vector<double> labels,
+		const vector<double> weights,
+		const Mat image)
+	{
+		WeakLearner bestWL;
+		double bestError = DBL_MAX;
+
+		for (int j = 0; j < 2; j++)
+		{
+			int img_size = (j == 0) ? image.rows : image.cols;
+
+			for (int threshold = 0; threshold < img_size; threshold++)
+			{
+				for (int class_label : {-1, 1})
+				{
+					double error = 0;
+
+					for (int i = 0; i < features.size(); i++)
+					{
+						int z = features[i][j] < threshold ? class_label : -class_label;
+						if (z * labels[i] < 0)
+							error += weights[i];
+					}
+
+					if (error < bestError)
+					{
+						bestError = error;
+						bestWL = { j, threshold, class_label, error };
+					}
+				}
+			}
+		}
+
+		return bestWL;
+	}
+};
+
+class AdaBoostClassifier
+{
+	int T;
+	vector<float> alphas;
+	vector<WeakLearner> hs;
+	matrix<int> features;
+	vector<double> labels;
+	Mat image;
+
+	void AdaBoost()
+	{
+		int n = features.size();
+
+		vector<double> weights(n, 1.0 / n);
+
+		for (int t = 0; t < T; t++)
+		{
+			hs[t] = WeakLearner::findWeakLearner(features, labels, weights, image);
+			alphas[t] = 0.5 * log((1.0 - hs[t].error) / hs[t].error);
+
+			double sum = 0;
+			for (int i = 0; i < n; i++)
+			{
+				weights[i] *= exp(-alphas[t] * labels[i] * hs[t].classify(features[i]));
+				sum += weights[i];
+			}
+
+			for (int i = 0; i < n; i++)
+				weights[i] /= sum;
+
+		}
+	}
+
+public:
+
+	AdaBoostClassifier(const int T, const matrix<int> features, const vector<double> labels, Mat image)
+		: T(T), features(features), labels(labels), image(image)
+	{
+		alphas = vector<float>(T);
+		hs = vector<WeakLearner>(T);
+		AdaBoost();
+	}
+
+	int classify(const vector<int> feature) const
+	{
+		double sum = 0;
+
+		for (int t = 0; t < T; t++)
+		{
+			sum += alphas[t] * hs[t].classify(feature);
+		}
+
+		return sum < 0 ? -1 : 1;
+	}
+
+	vector<float> getAlphas()
+	{
+		return alphas;
+	}
+
+	vector<WeakLearner> getHs()
+	{
+		return getHs();
+	}
+};
+
+
+auto isColorMatch = [](const uchar* imageData, const Vec3b& color, const int pixelIndex) -> bool {
+	return imageData[pixelIndex] == color[0]
+		&& imageData[pixelIndex + 1] == color[1]
+		&& imageData[pixelIndex + 2] == color[2];
+};
+
+auto assignColor = [](uchar* imageData, const Vec3b& color, const int pixelIndex) -> void {
+	imageData[pixelIndex] = color[0];
+	imageData[pixelIndex + 1] = color[1];
+	imageData[pixelIndex + 2] = color[2];
+};
+
+Mat drawBoundary(const Mat source, const AdaBoostClassifier classifier)
+{
+	Mat image = source.clone();
+
+	Vec3b yellow{ 0, 255, 255 };
+	Vec3b cyan{ 255, 255, 0 };
+	Vec3b white{ 255, 255, 255 };
+
+
+	for (int row = 0; row < image.rows; row++)
+	{
+		for (int col = 0; col < image.cols; col++)
+		{
+			int pixelIndex = (row * image.cols + col) * 3;
+
+			if (isColorMatch(image.data, white, pixelIndex))
+			{
+				vector<int> point{ row, col };
+				int cls = classifier.classify(point);
+
+				if (cls < 0)
+					assignColor(image.data, yellow, pixelIndex);
+				else
+					assignColor(image.data, cyan, pixelIndex);
+			}
+		}
+
+	}
+
+	return image;
+}
+
+void adaBoost()
+{
+	char filename[MAX_PATH];
+	openFileDlg(filename);
+
+	Mat image = imread(filename);
+
+	matrix<int> features;
+	vector<double> labels;
+
+	Vec3b red{ 0, 0, 255 };
+	Vec3b blue{ 255, 0, 0 };
+
+	for (int row = 0; row < image.rows; row++)
+	{
+		for (int col = 0; col < image.cols; col++)
+		{
+			int pixelIndex = (row * image.cols + col) * 3;
+
+			if (isColorMatch(image.data, blue, pixelIndex))
+			{
+				features.push_back(vector<int>{row, col});
+				labels.push_back({ -1 });
+			}
+
+			if (isColorMatch(image.data, red, pixelIndex))
+			{
+				features.push_back(vector<int>{row, col});
+				labels.push_back({ 1 });
+			}
+		}
+	}
+
+	AdaBoostClassifier adaBoostClassifier1(1, features, labels, image);
+	AdaBoostClassifier adaBoostClassifier13(13, features, labels, image);
+
+	Mat adaBoost1 = drawBoundary(image, adaBoostClassifier1);
+	Mat adaBoost13 = drawBoundary(image, adaBoostClassifier13);
+
+	imshow("image", image);
+	imshow("adaBoost1", adaBoost1);
+	imshow("adaBoost13", adaBoost13);
+	waitKey();
+	destroyAllWindows();
+}
 
 int main()
 {
-	int op = 8;
+	int op;
 	do
 	{
 		system("cls");
@@ -1685,7 +2029,10 @@ int main()
 		cout << "\t 9 - Naive Bayesian Classifier\n";
 
 		cout << " Lab10--------------------------------\n";
-		cout << "\t 10 - Perceptron\n";
+		cout << "\t 10 - Linear Classifiers\n";
+
+		cout << " Lab11--------------------------------\n";
+		cout << "\t 11 - AdaBoost\n";
 
 		cout << "\n0 - Exit\n\n";
 
@@ -1693,27 +2040,30 @@ int main()
 		cin >> op;
 		switch (op)
 		{
-			case 1:
-				regression();
-			case 2:
-				ransac();
-			case 3:
-				hough();
-			case 4:
-				dt();
-			case 5:
-				statistical_analysis();
-			case 6:
-				pca();
-			case 7:
-				clustering();
-			case 8:
-				neighbors();
-			case 9:
-				mnist();
+		case 1:
+			regression();
+		case 2:
+			ransac();
+		case 3:
+			hough();
+		case 4:
+			dt();
+		case 5:
+			statistical_analysis();
+		case 6:
+			pca();
+		case 7:
+			clustering();
+		case 8:
+			neighbors();
+		case 9:
+			mnist();
+		case 10:
+			linear_classifier();
+		case 11:
+			adaBoost();
 		}
-		op = 0;
-	}
-	while (op!=0);
+		//op = 0;
+	} while (op != 0);
 	return 0;
 }
